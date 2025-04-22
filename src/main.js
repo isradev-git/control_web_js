@@ -75,13 +75,23 @@ async function loadCSV(path) {
       const response = await fetch(path);
       if (!response.ok) throw new Error("Error cargando CSV");
       const text = await response.text();
-      return text.split("\n")
-          .map(line => line.trim())
-          .filter(line => line && !line.startsWith("#") && (line.startsWith("http://") || line.startsWith("https://")));
+      const validatedData = validateCSV(text); // Validar el CSV
+      return validatedData;
   } catch (error) {
       showNotification("Error cargando el CSV", "danger");
       return [];
   }
+}
+
+// Validar CSV
+function validateCSV(data) {
+  const lines = data.split("\n").map(line => line.trim());
+  const invalidLines = lines.filter(line => line && !line.startsWith("#") && !line.startsWith("http://") && !line.startsWith("https://"));
+  if (invalidLines.length > 0) {
+      console.warn("Líneas inválidas encontradas en el CSV:", invalidLines);
+      showNotification(`El archivo CSV contiene líneas inválidas. Se omitirán ${invalidLines.length} líneas.`, "warning");
+  }
+  return lines.filter(line => line && !line.startsWith("#") && (line.startsWith("http://") || line.startsWith("https://")));
 }
 
 // Iniciar análisis
@@ -287,26 +297,52 @@ function updateStats() {
 }
 
 // Enviar informe por email (simulado)
+// await emailjs.send("service_02jr8xm", "template_jy8pqw9", templateParams);
 async function sendEmailReport() {
   if (state.results.length === 0) {
       showNotification("No hay resultados para enviar", "warning");
       return;
   }
-  
+
   try {
       DOM.sendEmailBtn.disabled = true;
       DOM.sendEmailBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enviando...';
-      
-      // Simular envío (en producción usarías EmailJS o un backend)
-      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Inicializar EmailJS con tu API key
+      emailjs.init("cSUkwjYlO7vyyGUPK");
+
+      // Preparar el contenido del correo
+      const templateParams = {
+          to_email: CONFIG.emailRecipient,
+          subject: "Informe de Monitoreo Web",
+          message: generateEmailContent(state.results)
+      };
+
+      // Enviar el correo usando un servicio y plantilla de EmailJS
+      await emailjs.send("service_02jr8xm", "template_jy8pqw9", templateParams);
+
       showNotification(`Informe enviado a ${CONFIG.emailRecipient}`, "success");
-      
   } catch (error) {
+      console.error("Error enviando el correo:", error);
       showNotification("Error al enviar el informe", "danger");
   } finally {
       DOM.sendEmailBtn.disabled = false;
       DOM.sendEmailBtn.innerHTML = '<i class="fas fa-envelope mr-2"></i>Enviar informe';
   }
+}
+
+// Generar el contenido del correo
+function generateEmailContent(results) {
+  let content = "<h3>Resultados del Análisis:</h3><ul>";
+  results.forEach(result => {
+      content += `<li><strong>${result.url}</strong>:<br>`;
+      content += `- Estado: ${result.status}<br>`;
+      content += `- Latencia: ${result.latency || "N/A"}ms<br>`;
+      content += `- SSL: ${result.sslValid ? "VÁLIDO" : "INVÁLIDO"}<br>`;
+      content += `- Última verificación: ${result.lastChecked}<br></li>`;
+  });
+  content += "</ul>";
+  return content;
 }
 
 // Iniciar la aplicación
