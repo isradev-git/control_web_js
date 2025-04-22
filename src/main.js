@@ -160,9 +160,10 @@ async function checkWebsite(url) {
   const timeoutId = setTimeout(() => controller.abort(), 5000);
 
   try {
+    // Intentar solicitud GET con CORS
     const response = await fetch(url, {
-      method: "GET", // Cambiamos a GET para mayor compatibilidad
-      mode: "cors", // Cambiamos a cors para obtener más información
+      method: "GET",
+      mode: "cors", // Intentar CORS primero
       cache: "no-store",
       signal: controller.signal,
       redirect: "follow" // Seguir redirecciones automáticamente
@@ -184,10 +185,11 @@ async function checkWebsite(url) {
       try {
         const fallbackResponse = await fetch(url, {
           method: "HEAD",
-          mode: "no-cors",
+          mode: "no-cors", // Modo no-cors como respaldo
           cache: "no-store"
         });
-        status = "UP"; // Si no hay error, asumimos que el sitio está disponible
+        // Asumimos que el sitio está disponible si no hay error
+        status = "UP";
         latency = Date.now() - startTime;
       } catch (fallbackError) {
         console.warn(`Fallback falló para ${url}: ${fallbackError.message}`);
