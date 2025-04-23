@@ -72,11 +72,12 @@ function showNotification(message, type = "info") {
 // Cargar CSV
 async function loadCSV(path) {
   try {
-      const response = await fetch(path);
+      const response = await fetch(`/data/${path.split("/").pop()}`);
       if (!response.ok) throw new Error("Error cargando CSV");
       const text = await response.text();
-      const validatedData = validateCSV(text); // Validar el CSV
-      return validatedData;
+      return text.split("\n")
+          .map(line => line.trim())
+          .filter(line => line && !line.startsWith("#") && (line.startsWith("http://") || line.startsWith("https://")));
   } catch (error) {
       showNotification("Error cargando el CSV", "danger");
       return [];
